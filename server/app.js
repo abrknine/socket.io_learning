@@ -2,17 +2,25 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 
+
+const secretkeyJWT="adsadsasdasdasdas"
 const port = 3000;
+
+
+
 const app = express();
 const server = createServer(app);
+
 
 const io = new Server(server, {   
   cors: {
     origin: "http://localhost:5173",
     methods: ["GET", "POST"],
     credentials: true,
-  },
+  },  
 });
 
 app.use(cors({
@@ -24,9 +32,30 @@ app.use(cors({
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
-app.get('/favicon.ico', (req, res) => res.status(204));
+
+app.get("/login", (req, res) => {
+  const token = jwt.sign({ _id: "asdsfgvdsvsv" }, secretkeyJWT);
+  res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true }).json({ message: "User logged in successfully" });
+});
 
 
+
+//kidda middlware for connection bwtween server and client
+//const user =true; // agar ye false kar diya to connection nahi hoga
+io.use((socket, next) => { 
+cookieParser()(socket.request, socket.request.res, (err) => {
+  if(err){
+    return next(err)
+  }
+  const token= socket.request.cookies.token;
+  if(!token){
+    return next(new Error("Authentication error"))
+  
+  }
+  const decoded= jwt.verify(token, secretkeyJWT);
+  next();
+
+ })})
 
 io.on("connection", (socket) => {
          
